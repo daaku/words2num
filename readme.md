@@ -4,8 +4,8 @@ words2num converts numbers in words to digits.
 
 ```go
 w := words2num.Words2Num{}
-w.Transform("I have twenty three apples")                  // I have 23 apples
-w.Transform("Forty two point one")                         // 42.1
+w.Transform("Buy twenty three apples")                       // Buy 23 apples
+w.Transform("Forty two point one")                           // 42.1
 w.Transform("One million three hundred thousand fifty five") // 1,300,055
 
 w = words2num.Words2Num{NoCommas: true}
