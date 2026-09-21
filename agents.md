@@ -51,3 +51,12 @@ both are load bearing:
   lookup, which Go does not allocate. Words longer than `maxWordLen` are
   rejected early to keep that array on the stack, so bump `maxWordLen` whenever a
   longer word is added to the vocabulary.
+- `Transform` builds the result in a single byte slice and everything formats
+  into it (`run.format` and `appendInt` take a destination, `strconv.AppendInt`
+  fills a stack array). Text with numbers costs two allocations however many
+  numbers it holds; `TestTransformNoAllocations` and the benchmarks in
+  `words2num_test.go` keep an eye on this.
+- `FuzzTransform` checks the two properties that are easy to break while
+  changing the parser: text with no number words comes back untouched, and
+  transforming twice changes nothing after the first pass. Run it with
+  `go test -fuzz FuzzTransform` before shipping a parser change.

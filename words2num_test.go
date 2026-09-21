@@ -1,6 +1,9 @@
 package words2num
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestTransform(t *testing.T) {
 	cases := []struct{ in, out string }{
@@ -85,6 +88,7 @@ func TestTransform(t *testing.T) {
 		// Not numbers.
 		{"", ""},
 		{"no numbers here", "no numbers here"},
+		{"their extraordinarily long words stay put", "their extraordinarily long words stay put"},
 		{"hundred of them", "hundred of them"},
 		{"thousand of them", "thousand of them"},
 		{"and", "and"},
@@ -158,3 +162,84 @@ func TestTransformInputCommas(t *testing.T) {
 		}
 	}
 }
+
+// Text with no numbers in it must cost nothing at all.
+func TestTransformNoAllocations(t *testing.T) {
+	inputs := []string{
+		"",
+		"no numbers here",
+		"the point is clear",
+		"hundred of them, and you",
+		strings.Repeat("words that are nothing like digits at all, never here. ", 40),
+	}
+
+	w := Words2Num{}
+	for _, in := range inputs {
+		allocs := testing.AllocsPerRun(100, func() {
+			if got := w.Transform(in); got != in {
+				t.Errorf("Transform(%q) = %q", in, got)
+			}
+		})
+		if allocs != 0 {
+			t.Errorf("Transform(%q) allocated %g times per run, want 0", in, allocs)
+		}
+	}
+}
+
+func BenchmarkTransformNoNumbers(b *testing.B) {
+	in := strings.Repeat("words that are nothing like digits at all, never here. ", 40)
+	w := Words2Num{}
+	b.ReportAllocs()
+	for b.Loop() {
+		sink = w.Transform(in)
+	}
+}
+
+func BenchmarkTransform(b *testing.B) {
+	in := strings.Repeat("twenty three, one hundred and four, one million three, ", 50)
+	w := Words2Num{}
+	b.ReportAllocs()
+	for b.Loop() {
+		sink = w.Transform(in)
+	}
+}
+
+// FuzzTransform keeps Transform honest: text with no numbers is never touched,
+// the result is stable, and no word shows up in the output that was not in the
+// input.
+func FuzzTransform(f *testing.F) {
+	f.Add("Eight hundred and fifty five")
+	f.Add("Forty two point one")
+	f.Add("One million three hundred thousand fifty five")
+	f.Add("one hundred. fifty five")
+	f.Add("the point is clear")
+	f.Add("one million, three hundred thousand, and fifty five")
+	w := Words2Num{}
+	f.Fuzz(func(t *testing.T, s string) {
+		got := w.Transform(s)
+		if !hasNumberWord(s) && got != s {
+			t.Fatalf("changed text with no numbers: %q -> %q", s, got)
+		}
+		if again := w.Transform(got); again != got {
+			t.Fatalf("not idempotent: %q -> %q -> %q", s, got, again)
+		}
+		seen := map[string]bool{}
+		for _, word := range strings.Fields(s) {
+			seen[strings.ToLower(word)] = true
+		}
+		for _, word := range strings.Fields(got) {
+			word = strings.ToLower(word)
+			if isNumberWord(word) && !seen[word] {
+				t.Fatalf("made up the word %q: %q -> %q", word, s, got)
+			}
+		}
+	})
+}
+
+// isNumberWord reports whether s is a word that carries a number.
+func isNumberWord(s string) bool {
+	w, ok := lookup(s)
+	return ok && w.kind != kindAnd && w.kind != kindPoint
+}
+
+var sink string

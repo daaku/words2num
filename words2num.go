@@ -6,7 +6,6 @@ package words2num
 import (
 	"math"
 	"strconv"
-	"strings"
 )
 
 // The kinds of words we recognize. Words are looked up whole, never split, so
@@ -173,14 +172,15 @@ func (r *run) add(w word, start, end int) bool {
 // value returns the number the run parsed to.
 func (r *run) value() int64 { return r.total + r.cur }
 
-// format returns the digits of the number, with its fractional part if it has
-// one. Groups of three digits are separated with sep, unless sep is zero.
-func (r *run) format(sep byte) string {
-	b := appendInt(nil, r.value(), sep)
+// format appends the digits of the number to dst, with its fractional part if
+// it has one. Groups of three digits are separated with sep, unless sep is
+// zero.
+func (r *run) format(dst []byte, sep byte) []byte {
+	dst = appendInt(dst, r.value(), sep)
 	if len(r.frac) > 0 {
-		b = append(append(b, '.'), r.frac...)
+		dst = append(append(dst, '.'), r.frac...)
 	}
-	return string(b)
+	return dst
 }
 
 // done reports whether the run is empty.
@@ -240,7 +240,8 @@ func hardBreak(c byte) bool {
 
 // appendInt appends the digits of v to b, with sep between groups of three.
 func appendInt(b []byte, v int64, sep byte) []byte {
-	s := strconv.FormatInt(v, 10)
+	var arr [20]byte
+	s := strconv.AppendInt(arr[:0], v, 10)
 	if sep == 0 || len(s) <= 3 {
 		return append(b, s...)
 	}
@@ -290,7 +291,7 @@ func (w Words2Num) Transform(s string) string {
 		sep = 0
 	}
 	var (
-		out  strings.Builder
+		out  = make([]byte, 0, len(s))
 		last int
 		r    run
 	)
@@ -298,8 +299,8 @@ func (w Words2Num) Transform(s string) string {
 		if !r.valid() {
 			return
 		}
-		out.WriteString(s[last:r.start])
-		out.WriteString(r.format(sep))
+		out = append(out, s[last:r.start]...)
+		out = r.format(out, sep)
 		last = r.end
 	}
 	for i := 0; i < len(s); {
@@ -330,6 +331,6 @@ func (w Words2Num) Transform(s string) string {
 		i = end
 	}
 	flush()
-	out.WriteString(s[last:])
-	return out.String()
+	out = append(out, s[last:]...)
+	return string(out)
 }
