@@ -13,6 +13,10 @@ Numbers come from speech to text most of the time.
 
 ## Parsing
 
+Vocabulary covers `zero`..`nineteen`, `twenty`..`ninety`, `hundred`, the scales
+`thousand`, `million`, `billion`, `trillion`, and the filler `and`. Plurals like
+"thousands" are not numbers, and neither is a scale word on its own.
+
 `Transform` walks the text word by word and feeds each recognized number word to
 a small state machine (`run`) that accumulates `total` and `cur`:
 

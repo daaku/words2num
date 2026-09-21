@@ -15,7 +15,7 @@ const (
 	kindUnit    = iota // zero .. nineteen
 	kindTens           // twenty .. ninety
 	kindHundred        // hundred
-	kindScale          // thousand, million, ...
+	kindScale          // thousand, million, billion, trillion
 	kindAnd            // and
 )
 
@@ -62,6 +62,8 @@ var words = map[string]word{
 
 	"thousand": {kindScale, 1000},
 	"million":  {kindScale, 1000 * 1000},
+	"billion":  {kindScale, 1000 * 1000 * 1000},
+	"trillion": {kindScale, 1000 * 1000 * 1000 * 1000},
 
 	"and": {kindAnd, 0},
 }
@@ -73,7 +75,7 @@ const (
 	stateUnit           // last word was zero .. nine
 	stateTens           // last word was ten .. ninety
 	stateHundred        // last word was hundred
-	stateScale          // last word was thousand, million, ...
+	stateScale          // last word was thousand, million, billion, trillion
 	stateAnd            // last word was and
 )
 
@@ -122,6 +124,8 @@ func (r *run) add(w word, start, end int) bool {
 		if state != stateUnit && state != stateTens && state != stateHundred {
 			return false
 		}
+		// Scales up to trillion fit in an int64 with room to spare. This guards
+		// the vocabulary we may add later.
 		if cur > math.MaxInt64/w.value || cur > (math.MaxInt64-total)/w.value {
 			return false
 		}

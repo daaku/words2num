@@ -38,6 +38,15 @@ func TestTransform(t *testing.T) {
 		{"one million one thousand one", "1001001"},
 		{"twelve million three hundred forty five thousand six hundred seventy eight", "12345678"},
 
+		// Billions and trillions.
+		{"one billion", "1000000000"},
+		{"one billion one million", "1001000000"},
+		{"five hundred billion", "500000000000"},
+		{"one trillion", "1000000000000"},
+		{"one trillion one", "1000000000001"},
+		{"one trillion two hundred billion thirty four million five hundred sixty seven thousand eight hundred ninety", "1200034567890"},
+		{"nine hundred ninety nine trillion nine hundred ninety nine billion nine hundred ninety nine million nine hundred ninety nine thousand nine hundred ninety nine", "999999999999999"},
+
 		// In text.
 		{"I have twenty three apples", "I have 23 apples"},
 		{"It is one hundred and five degrees, give or take two", "It is 105 degrees, give or take 2"},
@@ -72,6 +81,8 @@ func TestTransformRuns(t *testing.T) {
 		{"twenty twenty", "20 20"},
 		{"one hundred hundred", "100 hundred"},
 		{"one million million", "1000000 million"},
+		{"million trillion", "million trillion"},
+		{"trillion trillion", "trillion trillion"},
 		{"five hundred two two", "502 2"},
 	}
 
