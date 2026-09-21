@@ -74,6 +74,13 @@ func TestTransform(t *testing.T) {
 		{"twenty-one", "21"},
 		{"line one: ten, line two: twenty", "line 1: 10, line 2: 20"},
 
+		// A number never crosses the end of a sentence.
+		{"The number is one hundred. Fifty five of them.", "The number is 100. 55 of them."},
+		{"one hundred! fifty five", "100! 55"},
+		{"one hundred\nfifty five", "100\n55"},
+		{"five point. one", "five point. 1"},
+		{"twenty-one", "21"},
+
 		// Not numbers.
 		{"", ""},
 		{"no numbers here", "no numbers here"},

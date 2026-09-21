@@ -29,6 +29,9 @@ a small state machine (`run`) that accumulates `total` and `cur`:
   you" stay as they are.
 - Runs are greedy and never ambiguous: the longest well formed number wins and
   leftovers are parsed again on their own ("five hundred two two" is "502 2").
+- A run ends at a hard separator (`.!?;:` and newlines) but not at a soft one,
+  so "twenty-one" and "one million, three hundred thousand" are still one
+  number while "one hundred. Fifty five" is two.
 - A word that does not fit closes the run and is then given a chance to start a
   run of its own. Nothing is ever dropped: a run that turns out not to be a
   number is left in the text untouched.

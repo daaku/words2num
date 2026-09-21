@@ -226,6 +226,18 @@ func isLetter(c byte) bool {
 	return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z')
 }
 
+// hardBreak reports whether c ends a sentence, which is where a number ends
+// too: "one hundred. Fifty five" is 100. 55, never 150. Commas and hyphens are
+// soft, so "twenty-one" and "one million, three hundred thousand" stay one
+// number.
+func hardBreak(c byte) bool {
+	switch c {
+	case '.', '!', '?', ';', ':', '\n', '\r':
+		return true
+	}
+	return false
+}
+
 // hasNumberWord reports whether s holds a word that could start a number.
 // Every number starts with a unit or a tens word, so this is exact.
 func hasNumberWord(s string) bool {
@@ -269,6 +281,10 @@ func (w Words2Num) Transform(s string) string {
 	for i := 0; i < len(s); {
 		tok, end := wordAt(s, i)
 		if end == i {
+			if hardBreak(s[i]) && !r.done() {
+				flush()
+				r = run{}
+			}
 			i++
 			continue
 		}
