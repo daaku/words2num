@@ -42,8 +42,8 @@ a small state machine (`run`) that accumulates `total` and `cur`:
 
 ## Costs
 
-Text with no numbers must cost zero allocations. Two things hold that up, and
-both are load bearing:
+Text with no numbers must cost zero allocations. These are the load bearing
+choices that keep it that way:
 
 - `hasNumberWord` pre-scans and returns the input unchanged. Every number starts
   with a unit or tens word, so this prescan is exact.
