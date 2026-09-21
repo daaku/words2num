@@ -174,9 +174,9 @@ func (r *run) add(w word, start, end int) bool {
 func (r *run) value() int64 { return r.total + r.cur }
 
 // format returns the digits of the number, with its fractional part if it has
-// one.
-func (r *run) format() string {
-	b := strconv.AppendInt(nil, r.value(), 10)
+// one. Groups of three digits are separated with sep, unless sep is zero.
+func (r *run) format(sep byte) string {
+	b := appendInt(nil, r.value(), sep)
 	if len(r.frac) > 0 {
 		b = append(append(b, '.'), r.frac...)
 	}
@@ -238,6 +238,21 @@ func hardBreak(c byte) bool {
 	return false
 }
 
+// appendInt appends the digits of v to b, with sep between groups of three.
+func appendInt(b []byte, v int64, sep byte) []byte {
+	s := strconv.FormatInt(v, 10)
+	if sep == 0 || len(s) <= 3 {
+		return append(b, s...)
+	}
+	n := (len(s)-1)%3 + 1
+	b = append(b, s[:n]...)
+	for i := n; i < len(s); i += 3 {
+		b = append(b, sep)
+		b = append(b, s[i:i+3]...)
+	}
+	return b
+}
+
 // hasNumberWord reports whether s holds a word that could start a number.
 // Every number starts with a unit or a tens word, so this is exact.
 func hasNumberWord(s string) bool {
@@ -257,13 +272,22 @@ func hasNumberWord(s string) bool {
 
 // Words2Num converts numbers written as words in text into digits. The zero
 // value is ready to use.
-type Words2Num struct{}
+type Words2Num struct {
+	// NoCommas writes the digits of a number as they come. By default groups of
+	// three digits are separated with a comma, so one million three hundred
+	// thousand fifty five is 1,300,055 and not 1300055.
+	NoCommas bool
+}
 
 // Transform replaces every number written in words in s with digits. Words
 // that do not form a number are left exactly as they were.
 func (w Words2Num) Transform(s string) string {
 	if !hasNumberWord(s) {
 		return s
+	}
+	sep := byte(',')
+	if w.NoCommas {
+		sep = 0
 	}
 	var (
 		out  strings.Builder
@@ -275,7 +299,7 @@ func (w Words2Num) Transform(s string) string {
 			return
 		}
 		out.WriteString(s[last:r.start])
-		out.WriteString(r.format())
+		out.WriteString(r.format(sep))
 		last = r.end
 	}
 	for i := 0; i < len(s); {

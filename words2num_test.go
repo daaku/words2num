@@ -8,6 +8,7 @@ func TestTransform(t *testing.T) {
 		{"Eight hundred and fifty five", "855"},
 		{"one", "1"},
 		{"Five hundred", "500"},
+		{"One million three hundred thousand fifty five", "1,300,055"},
 
 		// Plain values.
 		{"zero", "0"},
@@ -24,28 +25,28 @@ func TestTransform(t *testing.T) {
 		{"one hundred twenty three", "123"},
 		{"nine hundred ninety nine", "999"},
 		{"five hundred", "500"},
-		{"twenty hundred", "2000"},
+		{"twenty hundred", "2,000"},
 
 		// And is only filler inside a number.
 		{"one hundred and five", "105"},
-		{"one thousand and fifty five", "1055"},
+		{"one thousand and fifty five", "1,055"},
 
 		// Scales.
-		{"one thousand", "1000"},
-		{"one thousand one", "1001"},
-		{"nine hundred ninety nine thousand", "999000"},
-		{"one million", "1000000"},
-		{"one million one thousand one", "1001001"},
-		{"twelve million three hundred forty five thousand six hundred seventy eight", "12345678"},
+		{"one thousand", "1,000"},
+		{"one thousand one", "1,001"},
+		{"nine hundred ninety nine thousand", "999,000"},
+		{"one million", "1,000,000"},
+		{"one million one thousand one", "1,001,001"},
+		{"twelve million three hundred forty five thousand six hundred seventy eight", "12,345,678"},
 
 		// Billions and trillions.
-		{"one billion", "1000000000"},
-		{"one billion one million", "1001000000"},
-		{"five hundred billion", "500000000000"},
-		{"one trillion", "1000000000000"},
-		{"one trillion one", "1000000000001"},
-		{"one trillion two hundred billion thirty four million five hundred sixty seven thousand eight hundred ninety", "1200034567890"},
-		{"nine hundred ninety nine trillion nine hundred ninety nine billion nine hundred ninety nine million nine hundred ninety nine thousand nine hundred ninety nine", "999999999999999"},
+		{"one billion", "1,000,000,000"},
+		{"one billion one million", "1,001,000,000"},
+		{"five hundred billion", "500,000,000,000"},
+		{"one trillion", "1,000,000,000,000"},
+		{"one trillion one", "1,000,000,000,001"},
+		{"one trillion two hundred billion thirty four million five hundred sixty seven thousand eight hundred ninety", "1,200,034,567,890"},
+		{"nine hundred ninety nine trillion nine hundred ninety nine billion nine hundred ninety nine million nine hundred ninety nine thousand nine hundred ninety nine", "999,999,999,999,999"},
 
 		// Decimals: point splits a number we already started reading.
 		{"forty two point one", "42.1"},
@@ -54,7 +55,7 @@ func TestTransform(t *testing.T) {
 		{"one point two three", "1.23"},
 		{"ten point one two three", "10.123"},
 		{"one hundred point five", "100.5"},
-		{"one thousand point nine", "1000.9"},
+		{"one thousand point nine", "1,000.9"},
 		{"it costs thirty point nine nine dollars", "it costs 30.99 dollars"},
 
 		// Point on its own is only a word.
@@ -107,11 +108,47 @@ func TestTransformRuns(t *testing.T) {
 		{"five five", "5 5"},
 		{"twenty twenty", "20 20"},
 		{"one hundred hundred", "100 hundred"},
-		{"one million million", "1000000 million"},
+		{"one million million", "1,000,000 million"},
 		{"million trillion", "million trillion"},
 		{"trillion trillion", "trillion trillion"},
 		{"five hundred two two", "502 2"},
 		{"two point five hundred", "2.5 hundred"},
+	}
+
+	w := Words2Num{}
+	for _, c := range cases {
+		if got := w.Transform(c.in); got != c.out {
+			t.Errorf("Transform(%q) = %q, want %q", c.in, got, c.out)
+		}
+	}
+}
+
+func TestTransformNoCommas(t *testing.T) {
+	cases := []struct{ in, out string }{
+		{"One million three hundred thousand fifty five", "1300055"},
+		{"one thousand", "1000"},
+		{"nine hundred ninety nine trillion", "999000000000000"},
+		{"one thousand point nine", "1000.9"},
+		{"eight hundred and fifty five", "855"},
+		{"one hundred. Fifty five", "100. 55"},
+	}
+
+	w := Words2Num{NoCommas: true}
+	for _, c := range cases {
+		if got := w.Transform(c.in); got != c.out {
+			t.Errorf("Transform(%q) = %q, want %q", c.in, got, c.out)
+		}
+	}
+}
+
+// Commas in the input are only separators, they never end a number.
+func TestTransformInputCommas(t *testing.T) {
+	cases := []struct{ in, out string }{
+		{"one, thousand", "1,000"},
+		{"one million, three hundred thousand, fifty five", "1,300,055"},
+		{"one million three hundred thousand fifty five", "1,300,055"},
+		{"two, two", "2, 2"},
+		{"one, two, three", "1, 2, 3"},
 	}
 
 	w := Words2Num{}

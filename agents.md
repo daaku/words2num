@@ -22,6 +22,10 @@ number that is already being read. Only the digit words `zero`..`nine` follow it
 one digit each, so `two point five hundred` is "2.5 hundred" and a run that ends
 on `point` is not a number at all.
 
+`Words2Num` is the config and `Transform` is the only method. Its `NoCommas`
+field turns off grouping of three digits; grouping only ever applies to the whole
+part, so `one thousand point nine` is "1,000.9".
+
 `Transform` walks the text word by word and feeds each recognized number word to
 a small state machine (`run`) that accumulates `total` and `cur`:
 
