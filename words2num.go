@@ -17,6 +17,7 @@ const (
 	kindHundred        // hundred
 	kindScale          // thousand, million, billion, trillion
 	kindAnd            // and
+	kindPoint          // point, splits a number into its whole and fractional part
 )
 
 // maxWordLen is the length of the longest word we recognize.
@@ -66,6 +67,8 @@ var words = map[string]word{
 	"trillion": {kindScale, 1000 * 1000 * 1000 * 1000},
 
 	"and": {kindAnd, 0},
+
+	"point": {kindPoint, 0},
 }
 
 // The states of a run of number words. Only units and tens may start a run,
@@ -77,6 +80,8 @@ const (
 	stateHundred        // last word was hundred
 	stateScale          // last word was thousand, million, billion, trillion
 	stateAnd            // last word was and
+	statePoint          // last word was point
+	stateDigit          // last word was a digit of the fractional part
 )
 
 // run parses one run of consecutive number words into a value. It is fed every
@@ -85,14 +90,26 @@ type run struct {
 	state int8
 	total int64
 	cur   int64
-	start int // byte offset of the first word
-	end   int // byte offset after the last word consumed
+	frac  []byte // digits after point, if any
+	start int    // byte offset of the first word
+	end   int    // byte offset after the last word consumed
 }
 
 // add feeds the word w found at [start,end). It reports false, leaving the run
 // unchanged, when the word does not continue this number.
 func (r *run) add(w word, start, end int) bool {
 	total, cur, state := r.total, r.cur, r.state
+	if state == statePoint || state == stateDigit {
+		// Past the point a number only takes digits, one word each: two point
+		// one three. Nothing else fits, not even hundred or another point.
+		if w.kind != kindUnit || w.value > 9 {
+			return false
+		}
+		r.frac = append(r.frac, byte('0'+w.value))
+		r.state = stateDigit
+		r.end = end
+		return true
+	}
 	switch w.kind {
 	case kindUnit, kindTens:
 		switch {
@@ -138,6 +155,15 @@ func (r *run) add(w word, start, end int) bool {
 			return false
 		}
 		state = stateAnd
+	case kindPoint:
+		// Point only splits a number we already started reading, so "the point
+		// of it" stays words.
+		switch state {
+		case stateUnit, stateTens, stateHundred, stateScale:
+			state = statePoint
+		default:
+			return false
+		}
 	}
 	r.total, r.cur, r.state = total, cur, state
 	r.end = end
@@ -147,12 +173,24 @@ func (r *run) add(w word, start, end int) bool {
 // value returns the number the run parsed to.
 func (r *run) value() int64 { return r.total + r.cur }
 
+// format returns the digits of the number, with its fractional part if it has
+// one.
+func (r *run) format() string {
+	b := strconv.AppendInt(nil, r.value(), 10)
+	if len(r.frac) > 0 {
+		b = append(append(b, '.'), r.frac...)
+	}
+	return string(b)
+}
+
 // done reports whether the run is empty.
 func (r *run) done() bool { return r.state == stateEmpty }
 
-// valid reports whether the run parsed to a number worth replacing. A run
-// ending in "and" was never a number.
-func (r *run) valid() bool { return r.state != stateEmpty && r.state != stateAnd }
+// valid reports whether the run parsed to a number worth replacing. A run that
+// ends in "and", or in a "point" with no digits after it, was never a number.
+func (r *run) valid() bool {
+	return r.state != stateEmpty && r.state != stateAnd && r.state != statePoint
+}
 
 // lookup finds the word in a lower cased copy of s. The copy is made in a
 // stack array so looking up words costs nothing.
@@ -225,7 +263,7 @@ func (w Words2Num) Transform(s string) string {
 			return
 		}
 		out.WriteString(s[last:r.start])
-		out.WriteString(strconv.FormatInt(r.value(), 10))
+		out.WriteString(r.format())
 		last = r.end
 	}
 	for i := 0; i < len(s); {

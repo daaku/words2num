@@ -17,6 +17,11 @@ Vocabulary covers `zero`..`nineteen`, `twenty`..`ninety`, `hundred`, the scales
 `thousand`, `million`, `billion`, `trillion`, and the filler `and`. Plurals like
 "thousands" are not numbers, and neither is a scale word on its own.
 
+`point` splits a number into a whole and a fractional part, and only starts a
+number that is already being read. Only the digit words `zero`..`nine` follow it,
+one digit each, so `two point five hundred` is "2.5 hundred" and a run that ends
+on `point` is not a number at all.
+
 `Transform` walks the text word by word and feeds each recognized number word to
 a small state machine (`run`) that accumulates `total` and `cur`:
 

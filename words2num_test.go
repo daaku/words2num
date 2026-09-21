@@ -47,6 +47,26 @@ func TestTransform(t *testing.T) {
 		{"one trillion two hundred billion thirty four million five hundred sixty seven thousand eight hundred ninety", "1200034567890"},
 		{"nine hundred ninety nine trillion nine hundred ninety nine billion nine hundred ninety nine million nine hundred ninety nine thousand nine hundred ninety nine", "999999999999999"},
 
+		// Decimals: point splits a number we already started reading.
+		{"forty two point one", "42.1"},
+		{"zero point five", "0.5"},
+		{"two point zero five", "2.05"},
+		{"one point two three", "1.23"},
+		{"ten point one two three", "10.123"},
+		{"one hundred point five", "100.5"},
+		{"one thousand point nine", "1000.9"},
+		{"it costs thirty point nine nine dollars", "it costs 30.99 dollars"},
+
+		// Point on its own is only a word.
+		{"the point is clear", "the point is clear"},
+		{"point", "point"},
+		{"what is the point of two things", "what is the point of 2 things"},
+		{"point five", "point 5"},
+		{"five point", "five point"},
+		{"one hundred and point five", "one hundred and point 5"},
+		{"three point five point five", "3.5 point 5"},
+		{"two point twenty", "two point 20"},
+
 		// In text.
 		{"I have twenty three apples", "I have 23 apples"},
 		{"It is one hundred and five degrees, give or take two", "It is 105 degrees, give or take 2"},
@@ -84,6 +104,7 @@ func TestTransformRuns(t *testing.T) {
 		{"million trillion", "million trillion"},
 		{"trillion trillion", "trillion trillion"},
 		{"five hundred two two", "502 2"},
+		{"two point five hundred", "2.5 hundred"},
 	}
 
 	w := Words2Num{}
