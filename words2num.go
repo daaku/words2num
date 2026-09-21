@@ -280,9 +280,9 @@ type Words2Num struct {
 	NoCommas bool
 }
 
-// Transform replaces every number written in words in s with digits. Words
+// Replace replaces every number written in words in s with digits. Words
 // that do not form a number are left exactly as they were.
-func (w Words2Num) Transform(s string) string {
+func (w Words2Num) Replace(s string) string {
 	if !hasNumberWord(s) {
 		return s
 	}

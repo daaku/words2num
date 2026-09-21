@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestTransform(t *testing.T) {
+func TestReplace(t *testing.T) {
 	cases := []struct{ in, out string }{
 		// The examples.
 		{"Eight hundred and fifty five", "855"},
@@ -98,15 +98,15 @@ func TestTransform(t *testing.T) {
 
 	w := Words2Num{}
 	for _, c := range cases {
-		if got := w.Transform(c.in); got != c.out {
-			t.Errorf("Transform(%q) = %q, want %q", c.in, got, c.out)
+		if got := w.Replace(c.in); got != c.out {
+			t.Errorf("Replace(%q) = %q, want %q", c.in, got, c.out)
 		}
 	}
 }
 
 // Runs are greedy: the longest well formed number wins, and whatever is left
 // over is parsed again on its own.
-func TestTransformRuns(t *testing.T) {
+func TestReplaceRuns(t *testing.T) {
 	cases := []struct{ in, out string }{
 		{"one two", "1 2"},
 		{"five five", "5 5"},
@@ -121,13 +121,13 @@ func TestTransformRuns(t *testing.T) {
 
 	w := Words2Num{}
 	for _, c := range cases {
-		if got := w.Transform(c.in); got != c.out {
-			t.Errorf("Transform(%q) = %q, want %q", c.in, got, c.out)
+		if got := w.Replace(c.in); got != c.out {
+			t.Errorf("Replace(%q) = %q, want %q", c.in, got, c.out)
 		}
 	}
 }
 
-func TestTransformNoCommas(t *testing.T) {
+func TestReplaceNoCommas(t *testing.T) {
 	cases := []struct{ in, out string }{
 		{"One million three hundred thousand fifty five", "1300055"},
 		{"one thousand", "1000"},
@@ -139,14 +139,14 @@ func TestTransformNoCommas(t *testing.T) {
 
 	w := Words2Num{NoCommas: true}
 	for _, c := range cases {
-		if got := w.Transform(c.in); got != c.out {
-			t.Errorf("Transform(%q) = %q, want %q", c.in, got, c.out)
+		if got := w.Replace(c.in); got != c.out {
+			t.Errorf("Replace(%q) = %q, want %q", c.in, got, c.out)
 		}
 	}
 }
 
 // Commas in the input are only separators, they never end a number.
-func TestTransformInputCommas(t *testing.T) {
+func TestReplaceInputCommas(t *testing.T) {
 	cases := []struct{ in, out string }{
 		{"one, thousand", "1,000"},
 		{"one million, three hundred thousand, fifty five", "1,300,055"},
@@ -157,14 +157,14 @@ func TestTransformInputCommas(t *testing.T) {
 
 	w := Words2Num{}
 	for _, c := range cases {
-		if got := w.Transform(c.in); got != c.out {
-			t.Errorf("Transform(%q) = %q, want %q", c.in, got, c.out)
+		if got := w.Replace(c.in); got != c.out {
+			t.Errorf("Replace(%q) = %q, want %q", c.in, got, c.out)
 		}
 	}
 }
 
 // Text with no numbers in it must cost nothing at all.
-func TestTransformNoAllocations(t *testing.T) {
+func TestReplaceNoAllocations(t *testing.T) {
 	inputs := []string{
 		"",
 		"no numbers here",
@@ -176,38 +176,38 @@ func TestTransformNoAllocations(t *testing.T) {
 	w := Words2Num{}
 	for _, in := range inputs {
 		allocs := testing.AllocsPerRun(100, func() {
-			if got := w.Transform(in); got != in {
-				t.Errorf("Transform(%q) = %q", in, got)
+			if got := w.Replace(in); got != in {
+				t.Errorf("Replace(%q) = %q", in, got)
 			}
 		})
 		if allocs != 0 {
-			t.Errorf("Transform(%q) allocated %g times per run, want 0", in, allocs)
+			t.Errorf("Replace(%q) allocated %g times per run, want 0", in, allocs)
 		}
 	}
 }
 
-func BenchmarkTransformNoNumbers(b *testing.B) {
+func BenchmarkReplaceNoNumbers(b *testing.B) {
 	in := strings.Repeat("words that are nothing like digits at all, never here. ", 40)
 	w := Words2Num{}
 	b.ReportAllocs()
 	for b.Loop() {
-		sink = w.Transform(in)
+		sink = w.Replace(in)
 	}
 }
 
-func BenchmarkTransform(b *testing.B) {
+func BenchmarkReplace(b *testing.B) {
 	in := strings.Repeat("twenty three, one hundred and four, one million three, ", 50)
 	w := Words2Num{}
 	b.ReportAllocs()
 	for b.Loop() {
-		sink = w.Transform(in)
+		sink = w.Replace(in)
 	}
 }
 
-// FuzzTransform keeps Transform honest: text with no numbers is never touched,
+// FuzzReplace keeps Replace honest: text with no numbers is never touched,
 // the result is stable, and no word shows up in the output that was not in the
 // input.
-func FuzzTransform(f *testing.F) {
+func FuzzReplace(f *testing.F) {
 	f.Add("Eight hundred and fifty five")
 	f.Add("Forty two point one")
 	f.Add("One million three hundred thousand fifty five")
@@ -216,11 +216,11 @@ func FuzzTransform(f *testing.F) {
 	f.Add("one million, three hundred thousand, and fifty five")
 	w := Words2Num{}
 	f.Fuzz(func(t *testing.T, s string) {
-		got := w.Transform(s)
+		got := w.Replace(s)
 		if !hasNumberWord(s) && got != s {
 			t.Fatalf("changed text with no numbers: %q -> %q", s, got)
 		}
-		if again := w.Transform(got); again != got {
+		if again := w.Replace(got); again != got {
 			t.Fatalf("not idempotent: %q -> %q -> %q", s, got, again)
 		}
 		seen := map[string]bool{}

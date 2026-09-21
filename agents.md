@@ -22,11 +22,13 @@ number that is already being read. Only the digit words `zero`..`nine` follow it
 one digit each, so `two point five hundred` is "2.5 hundred" and a run that ends
 on `point` is not a number at all.
 
-`Words2Num` is the config and `Transform` is the only method. Its `NoCommas`
-field turns off grouping of three digits; grouping only ever applies to the whole
-part, so `one thousand point nine` is "1,000.9".
+`Words2Num` is the config and `Replace` is the only method. It is named after
+`strings.Replacer.Replace` so both can be used through the same
+`Replace(string) string` interface. `NoCommas` turns off grouping of three
+digits; grouping only ever applies to the whole part, so `one thousand point
+nine` is "1,000.9".
 
-`Transform` walks the text word by word and feeds each recognized number word to
+`Replace` walks the text word by word and feeds each recognized number word to
 a small state machine (`run`) that accumulates `total` and `cur`:
 
 - Only a unit or a tens word may start a number, so "hundred of them" and "and
@@ -51,12 +53,12 @@ choices that keep it that way:
   lookup, which Go does not allocate. Words longer than `maxWordLen` are
   rejected early to keep that array on the stack, so bump `maxWordLen` whenever a
   longer word is added to the vocabulary.
-- `Transform` builds the result in a single byte slice and everything formats
+- `Replace` builds the result in a single byte slice and everything formats
   into it (`run.format` and `appendInt` take a destination, `strconv.AppendInt`
   fills a stack array). Text with numbers costs two allocations however many
-  numbers it holds; `TestTransformNoAllocations` and the benchmarks in
+  numbers it holds; `TestReplaceNoAllocations` and the benchmarks in
   `words2num_test.go` keep an eye on this.
-- `FuzzTransform` checks the two properties that are easy to break while
+- `FuzzReplace` checks the two properties that are easy to break while
   changing the parser: text with no number words comes back untouched, and
   transforming twice changes nothing after the first pass. Run it with
-  `go test -fuzz FuzzTransform` before shipping a parser change.
+  `go test -fuzz FuzzReplace` before shipping a parser change.
