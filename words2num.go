@@ -6,6 +6,7 @@ package words2num
 import (
 	"math"
 	"strconv"
+	"strings"
 )
 
 // The kinds of words we recognize. Words are looked up whole, never split, so
@@ -255,8 +256,10 @@ func appendInt(b []byte, v int64, sep byte) []byte {
 }
 
 // hasNumberWord reports whether s holds a word that could start a number.
-// Every number starts with a unit or a tens word, so this is exact.
+// Every number starts with a unit or a tens word that is not the pronoun one,
+// so this is exact.
 func hasNumberWord(s string) bool {
+	var prev string
 	for i := 0; i < len(s); {
 		tok, end := wordAt(s, i)
 		if end == i {
@@ -264,11 +267,38 @@ func hasNumberWord(s string) bool {
 			continue
 		}
 		if w, ok := lookup(tok); ok && (w.kind == kindUnit || w.kind == kindTens) {
-			return true
+			if !isPronounOne(prev, w) {
+				return true
+			}
 		}
+		prev = tok
 		i = end
 	}
 	return false
+}
+
+// determiners are the words after which "one" is a pronoun rather than a
+// count. The list is deliberately short: only words that never introduce a
+// number.
+var determiners = []string{
+	"this", "that", "the", "which", "another", "each", "every", "no", "any",
+}
+
+// isDeterminer reports whether s is one of them, ignoring case.
+func isDeterminer(s string) bool {
+	for _, d := range determiners {
+		if strings.EqualFold(s, d) {
+			return true
+		}
+	}
+	return false
+}
+
+// isPronounOne reports whether w is the pronoun "one" rather than the number,
+// which is what the word before it decides: "this one" is not "this 1", while
+// "twenty one" is still 21 because there the run is already going.
+func isPronounOne(prev string, w word) bool {
+	return w.kind == kindUnit && w.value == 1 && isDeterminer(prev)
 }
 
 // Words2Num converts numbers written as words in text into digits. The zero
@@ -294,6 +324,7 @@ func (w Words2Num) Replace(s string) string {
 		out  = make([]byte, 0, len(s))
 		last int
 		r    run
+		prev string // the word before the one being read
 	)
 	flush := func() {
 		if !r.valid() {
@@ -314,20 +345,23 @@ func (w Words2Num) Replace(s string) string {
 			continue
 		}
 		wd, known := lookup(tok)
-		if known && r.add(wd, i, end) {
+		if known && !isPronounOne(prev, wd) && r.add(wd, i, end) {
+			prev = tok
 			i = end
 			continue
 		}
 		if r.done() {
+			prev = tok
 			i = end // just a word
 			continue
 		}
 		// The run ends before this word, which may start one of its own.
 		flush()
 		r = run{}
-		if known {
+		if known && !isPronounOne(prev, wd) {
 			r.add(wd, i, end)
 		}
+		prev = tok
 		i = end
 	}
 	flush()

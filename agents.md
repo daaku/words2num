@@ -33,6 +33,11 @@ a small state machine (`run`) that accumulates `total` and `cur`:
 
 - Only a unit or a tens word may start a number, so "hundred of them" and "and
   you" stay as they are.
+- A unit word only starts a number when the word before it allows one: after a
+  determiner, "one" is the pronoun and not a count, so "this one", "the one"
+  and "no one" stay as they are. `determiners` is deliberately short and
+  `isPronounOne` is the only place that reads it. "twenty one" is unaffected,
+  because there the run is already going.
 - Runs are greedy and never ambiguous: the longest well formed number wins and
   leftovers are parsed again on their own ("five hundred two two" is "502 2").
 - A run ends at a hard separator (`.!?;:` and newlines) but not at a soft one,
@@ -48,7 +53,8 @@ Text with no numbers must cost zero allocations. These are the load bearing
 choices that keep it that way:
 
 - `hasNumberWord` pre-scans and returns the input unchanged. Every number starts
-  with a unit or tens word, so this prescan is exact.
+  with a unit or tens word that is not the pronoun one, so this prescan is
+  exact, and text like "this one" still costs nothing.
 - `lookup` lower cases into a fixed stack array and only then does the map
   lookup, which Go does not allocate. Words longer than `maxWordLen` are
   rejected early to keep that array on the stack, so bump `maxWordLen` whenever a

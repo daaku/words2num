@@ -94,6 +94,25 @@ func TestReplace(t *testing.T) {
 		{"and", "and"},
 		{"one hundred and", "one hundred and"},
 		{"and one", "and 1"},
+
+		// One after a determiner is the pronoun, not a count.
+		{"this one", "this one"},
+		{"I like this one", "I like this one"},
+		{"that one", "that one"},
+		{"the one", "the one"},
+		{"the one and only", "the one and only"},
+		{"no one", "no one"},
+		{"each one", "each one"},
+		{"every one", "every one"},
+		{"any one", "any one"},
+		{"another one", "another one"},
+		{"which one", "which one"},
+		{"This One.", "This One."},
+		// It is still a count on its own or inside a number.
+		{"only one", "only 1"},
+		{"just one", "just 1"},
+		{"one of them", "1 of them"},
+		{"the twenty one", "the 21"},
 	}
 
 	w := Words2Num{}
@@ -170,6 +189,7 @@ func TestReplaceNoAllocations(t *testing.T) {
 		"no numbers here",
 		"the point is clear",
 		"hundred of them, and you",
+		"this one and that one, no one, the one, any one",
 		strings.Repeat("words that are nothing like digits at all, never here. ", 40),
 	}
 

@@ -13,4 +13,6 @@ w.Replace("One million three hundred thousand fifty five") // 1300055
 ```
 
 Words that do not make a number are left alone, so "the point is clear" and
-"hundred of them" come back as they were.
+"hundred of them" come back as they were. "one" after a determiner is the
+pronoun rather than a count, so "this one" stays "this one" while "twenty one"
+is still 21.
