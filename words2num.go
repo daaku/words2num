@@ -193,6 +193,12 @@ func (r *run) valid() bool {
 	return r.state != stateEmpty && r.state != stateAnd && r.state != statePoint
 }
 
+// bareOne reports whether the run is just the word "one", which is what the
+// word after it can turn into a pronoun: "one of my friends".
+func (r *run) bareOne() bool {
+	return r.state == stateUnit && r.total == 0 && r.cur == 1
+}
+
 // lookup finds the word in a lower cased copy of s. The copy is made in a
 // stack array so looking up words costs nothing.
 func lookup(s string) (word, bool) {
@@ -256,8 +262,8 @@ func appendInt(b []byte, v int64, sep byte) []byte {
 }
 
 // hasNumberWord reports whether s holds a word that could start a number.
-// Every number starts with a unit or a tens word that is not the pronoun one,
-// so this is exact.
+// Every number starts with a unit or a tens word that is not one of the two
+// pronouns, so this is exact.
 func hasNumberWord(s string) bool {
 	var prev string
 	for i := 0; i < len(s); {
@@ -267,7 +273,7 @@ func hasNumberWord(s string) bool {
 			continue
 		}
 		if w, ok := lookup(tok); ok && (w.kind == kindUnit || w.kind == kindTens) {
-			if !isPronounOne(prev, w) {
+			if !isPronounOne(prev, w) && !isPartitiveOne(s, end, w) {
 				return true
 			}
 		}
@@ -299,6 +305,24 @@ func isDeterminer(s string) bool {
 // "twenty one" is still 21 because there the run is already going.
 func isPronounOne(prev string, w word) bool {
 	return w.kind == kindUnit && w.value == 1 && isDeterminer(prev)
+}
+
+// isOf reports whether s is the word "of".
+func isOf(s string) bool { return strings.EqualFold(s, "of") }
+
+// isPartitiveOne reports whether the word w, which ends at end, is "one"
+// followed by "of", which is the other shape of the pronoun: "one of my
+// friends" is not "1 of my friends". What comes before it cannot decide this,
+// which is why the pre-scan looks ahead.
+func isPartitiveOne(s string, end int, w word) bool {
+	if w.kind != kindUnit || w.value != 1 {
+		return false
+	}
+	for end < len(s) && s[end] == ' ' {
+		end++
+	}
+	next, _ := wordAt(s, end)
+	return isOf(next)
 }
 
 // Words2Num converts numbers written as words in text into digits. The zero
@@ -353,6 +377,14 @@ func (w Words2Num) Replace(s string) string {
 		if r.done() {
 			prev = tok
 			i = end // just a word
+			continue
+		}
+		// A run that is only "one" in front of "of" is the pronoun rather than
+		// a count, so it stays as written.
+		if r.bareOne() && isOf(tok) {
+			r = run{}
+			prev = tok
+			i = end
 			continue
 		}
 		// The run ends before this word, which may start one of its own.

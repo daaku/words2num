@@ -38,6 +38,13 @@ a small state machine (`run`) that accumulates `total` and `cur`:
   and "no one" stay as they are. `determiners` is deliberately short and
   `isPronounOne` is the only place that reads it. "twenty one" is unaffected,
   because there the run is already going.
+- "one" is the pronoun in one other shape, when the word after it is "of":
+  "one of my friends" is not "1 of my friends". The run machine only ever sees
+  behind itself, so `isPartitiveOne` looks ahead instead, and both
+  `hasNumberWord` and `Replace` call it. A count in front of "of" is
+  unaffected ("two of my friends" is "2 of my friends"), and so is a scale
+  word ("one hundred of them" is "100 of them") because there the run is no
+  longer a bare "one".
 - Runs are greedy and never ambiguous: the longest well formed number wins and
   leftovers are parsed again on their own ("five hundred two two" is "502 2").
 - A run ends at a hard separator (`.!?;:` and newlines) but not at a soft one,
@@ -53,8 +60,8 @@ Text with no numbers must cost zero allocations. These are the load bearing
 choices that keep it that way:
 
 - `hasNumberWord` pre-scans and returns the input unchanged. Every number starts
-  with a unit or tens word that is not the pronoun one, so this prescan is
-  exact, and text like "this one" still costs nothing.
+  with a unit or tens word that is not one of the pronouns, so this prescan is
+  exact, and text like "this one" or "one of them" still costs nothing.
 - `lookup` lower cases into a fixed stack array and only then does the map
   lookup, which Go does not allocate. Words longer than `maxWordLen` are
   rejected early to keep that array on the stack, so bump `maxWordLen` whenever a

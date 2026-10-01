@@ -111,8 +111,19 @@ func TestReplace(t *testing.T) {
 		// It is still a count on its own or inside a number.
 		{"only one", "only 1"},
 		{"just one", "just 1"},
-		{"one of them", "1 of them"},
 		{"the twenty one", "the 21"},
+
+		// One in front of "of" is the other shape of the pronoun.
+		{"one of them", "one of them"},
+		{"one of my friends", "one of my friends"},
+		{"I want one of those", "I want one of those"},
+		{"only one of my friends", "only one of my friends"},
+		{"One Of My Friends.", "One Of My Friends."},
+		// A count in front of "of" still counts, and the two after it does.
+		{"two of my friends", "2 of my friends"},
+		{"twenty one of my friends", "21 of my friends"},
+		{"one hundred of them", "100 of them"},
+		{"one of the two", "one of the 2"},
 	}
 
 	w := Words2Num{}
@@ -190,6 +201,7 @@ func TestReplaceNoAllocations(t *testing.T) {
 		"the point is clear",
 		"hundred of them, and you",
 		"this one and that one, no one, the one, any one",
+		"one of my friends, one of them, one of us",
 		strings.Repeat("words that are nothing like digits at all, never here. ", 40),
 	}
 
