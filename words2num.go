@@ -1,12 +1,15 @@
 // Package words2num converts numbers written as words into digits. It is meant
 // for text, usually speech to text output, where numbers show up as words: "I
 // have twenty three apples" becomes "I have 23 apples".
+//
+// A "one" that stands on its own stays a word, since it is the pronoun about as
+// often as it is a count: "I have one" is left alone, while "one hundred" is
+// "100".
 package words2num
 
 import (
 	"math"
 	"strconv"
-	"strings"
 )
 
 // The kinds of words we recognize. Words are looked up whole, never split, so
@@ -193,8 +196,8 @@ func (r *run) valid() bool {
 	return r.state != stateEmpty && r.state != stateAnd && r.state != statePoint
 }
 
-// bareOne reports whether the run is just the word "one", which is what the
-// word after it can turn into a pronoun: "one of my friends".
+// bareOne reports whether the run is just the word "one". A run like that is
+// only a number when a number word follows it, which `loneOne` decides.
 func (r *run) bareOne() bool {
 	return r.state == stateUnit && r.total == 0 && r.cur == 1
 }
@@ -262,10 +265,9 @@ func appendInt(b []byte, v int64, sep byte) []byte {
 }
 
 // hasNumberWord reports whether s holds a word that could start a number.
-// Every number starts with a unit or a tens word that is not one of the two
-// pronouns, so this is exact.
+// Every number starts with a unit or a tens word, and a "one" that stands on
+// its own is not one, so this is exact.
 func hasNumberWord(s string) bool {
-	var prev string
 	for i := 0; i < len(s); {
 		tok, end := wordAt(s, i)
 		if end == i {
@@ -273,57 +275,39 @@ func hasNumberWord(s string) bool {
 			continue
 		}
 		if w, ok := lookup(tok); ok && (w.kind == kindUnit || w.kind == kindTens) {
-			if !isPronounOne(prev, w) && !isPartitiveOne(s, end, w) {
+			if !loneOne(s, end, w) {
 				return true
 			}
 		}
-		prev = tok
 		i = end
 	}
 	return false
 }
 
-// determiners are the words after which "one" is a pronoun rather than a
-// count. The list is deliberately short: only words that never introduce a
-// number.
-var determiners = []string{
-	"this", "that", "the", "which", "another", "each", "every", "no", "any",
-}
-
-// isDeterminer reports whether s is one of them, ignoring case.
-func isDeterminer(s string) bool {
-	for _, d := range determiners {
-		if strings.EqualFold(s, d) {
-			return true
-		}
-	}
-	return false
-}
-
-// isPronounOne reports whether w is the pronoun "one" rather than the number,
-// which is what the word before it decides: "this one" is not "this 1", while
-// "twenty one" is still 21 because there the run is already going.
-func isPronounOne(prev string, w word) bool {
-	return w.kind == kindUnit && w.value == 1 && isDeterminer(prev)
-}
-
-// isOf reports whether s is the word "of".
-func isOf(s string) bool { return strings.EqualFold(s, "of") }
-
-// isPartitiveOne reports whether the word w, which ends at end, is "one"
-// followed by "of", which is the other shape of the pronoun: "one of my
-// friends" is not "1 of my friends". What comes before it cannot decide this,
-// which is why the pre-scan looks ahead.
-func isPartitiveOne(s string, end int, w word) bool {
+// loneOne reports whether w, which ends at end, is a "one" that stands on its
+// own: no number word follows it, so it is the pronoun or the word rather than
+// a count. "one apple" keeps its word, "one hundred" and "one twenty three"
+// are numbers. Nothing in front of it can change that, which is why this looks
+// ahead in the text and both Replace and the pre-scan call it.
+func loneOne(s string, end int, w word) bool {
 	if w.kind != kindUnit || w.value != 1 {
 		return false
 	}
-	for end < len(s) && s[end] == ' ' {
+	// Skip what Replace skips before the next word: spaces and soft
+	// punctuation let a run carry on, a hard break ends it.
+	for end < len(s) && !isLetter(s[end]) && !hardBreak(s[end]) {
 		end++
 	}
 	next, _ := wordAt(s, end)
-	return isOf(next)
+	nw, known := lookup(next)
+	return !known || !numberWord(nw)
 }
+
+// numberWord reports whether w is a number word a lone "one" can stand next
+// to: everything in the vocabulary except "and", which only ever joins a
+// number that is already going ("one hundred and five"), and so leaves "the
+// one and only" alone.
+func numberWord(w word) bool { return w.kind != kindAnd }
 
 // Words2Num converts numbers written as words in text into digits. The zero
 // value is ready to use.
@@ -348,10 +332,12 @@ func (w Words2Num) Replace(s string) string {
 		out  = make([]byte, 0, len(s))
 		last int
 		r    run
-		prev string // the word before the one being read
 	)
-	flush := func() {
-		if !r.valid() {
+	// flush writes the run out. A run that is only the word "one" is left as
+	// written unless a number word follows it, so "one apple" keeps its word
+	// while "one twenty three" and "one hundred" are numbers.
+	flush := func(nextKnown bool) {
+		if !r.valid() || r.bareOne() && !nextKnown {
 			return
 		}
 		out = append(out, s[last:r.start]...)
@@ -362,41 +348,30 @@ func (w Words2Num) Replace(s string) string {
 		tok, end := wordAt(s, i)
 		if end == i {
 			if hardBreak(s[i]) && !r.done() {
-				flush()
+				flush(false)
 				r = run{}
 			}
 			i++
 			continue
 		}
 		wd, known := lookup(tok)
-		if known && !isPronounOne(prev, wd) && r.add(wd, i, end) {
-			prev = tok
+		if known && r.add(wd, i, end) {
 			i = end
 			continue
 		}
 		if r.done() {
-			prev = tok
 			i = end // just a word
 			continue
 		}
-		// A run that is only "one" in front of "of" is the pronoun rather than
-		// a count, so it stays as written.
-		if r.bareOne() && isOf(tok) {
-			r = run{}
-			prev = tok
-			i = end
-			continue
-		}
 		// The run ends before this word, which may start one of its own.
-		flush()
+		flush(known && numberWord(wd))
 		r = run{}
-		if known && !isPronounOne(prev, wd) {
+		if known {
 			r.add(wd, i, end)
 		}
-		prev = tok
 		i = end
 	}
-	flush()
+	flush(false)
 	out = append(out, s[last:]...)
 	return string(out)
 }

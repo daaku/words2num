@@ -13,7 +13,7 @@ w.Replace("One million three hundred thousand fifty five") // 1300055
 ```
 
 Words that do not make a number are left alone, so "the point is clear" and
-"hundred of them" come back as they were. "one" is the pronoun rather than a
-count after a determiner ("this one", "no one") and in front of "of" ("one of
-my friends"), so those stay as they are, while "twenty one" is still 21 and
-"two of my friends" is still "2 of my friends".
+"hundred of them" come back as they were. A "one" that stands on its own is
+left as the word too, because it is the pronoun about as often as it is a
+count: "one apple", "this one" and "one of my friends" are untouched, while
+"one hundred" is "100", "one twenty three" is "1 23" and "twenty one" is 21.

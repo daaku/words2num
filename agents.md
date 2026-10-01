@@ -33,18 +33,14 @@ a small state machine (`run`) that accumulates `total` and `cur`:
 
 - Only a unit or a tens word may start a number, so "hundred of them" and "and
   you" stay as they are.
-- A unit word only starts a number when the word before it allows one: after a
-  determiner, "one" is the pronoun and not a count, so "this one", "the one"
-  and "no one" stay as they are. `determiners` is deliberately short and
-  `isPronounOne` is the only place that reads it. "twenty one" is unaffected,
-  because there the run is already going.
-- "one" is the pronoun in one other shape, when the word after it is "of":
-  "one of my friends" is not "1 of my friends". The run machine only ever sees
-  behind itself, so `isPartitiveOne` looks ahead instead, and both
-  `hasNumberWord` and `Replace` call it. A count in front of "of" is
-  unaffected ("two of my friends" is "2 of my friends"), and so is a scale
-  word ("one hundred of them" is "100 of them") because there the run is no
-  longer a bare "one".
+- A "one" that stands on its own is not a number: "one apple" and "this one"
+  keep their word. It counts only when another number word sits next to it,
+  which is what `bareOne` and `loneOne` decide: "one hundred" is "100" and "one
+  twenty three" is "1 23", while "one of my friends" and "one more time" are
+  left alone. "and" does not count as the neighbouring word, so "the one and
+  only" and "one and a half" stay as they are. There is deliberately no list of
+  the words that can come before it: that was tried, and "this one" and "one of
+  my" each needed their own rule.
 - Runs are greedy and never ambiguous: the longest well formed number wins and
   leftovers are parsed again on their own ("five hundred two two" is "502 2").
 - A run ends at a hard separator (`.!?;:` and newlines) but not at a soft one,
@@ -60,8 +56,9 @@ Text with no numbers must cost zero allocations. These are the load bearing
 choices that keep it that way:
 
 - `hasNumberWord` pre-scans and returns the input unchanged. Every number starts
-  with a unit or tens word that is not one of the pronouns, so this prescan is
-  exact, and text like "this one" or "one of them" still costs nothing.
+  with a unit or tens word that is not a lone "one", and `loneOne` looks ahead
+  the way `Replace` does, so the prescan is exact and text like "one apple" or
+  "one of them" still costs nothing.
 - `lookup` lower cases into a fixed stack array and only then does the map
   lookup, which Go does not allocate. Words longer than `maxWordLen` are
   rejected early to keep that array on the stack, so bump `maxWordLen` whenever a

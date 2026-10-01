@@ -9,7 +9,6 @@ func TestReplace(t *testing.T) {
 	cases := []struct{ in, out string }{
 		// The examples.
 		{"Eight hundred and fifty five", "855"},
-		{"one", "1"},
 		{"Five hundred", "500"},
 		{"One million three hundred thousand fifty five", "1,300,055"},
 
@@ -76,13 +75,13 @@ func TestReplace(t *testing.T) {
 		{"It is one hundred and five degrees, give or take two", "It is 105 degrees, give or take 2"},
 		{"ONE HUNDRED TWENTY THREE", "123"},
 		{"twenty-one", "21"},
-		{"line one: ten, line two: twenty", "line 1: 10, line 2: 20"},
+		{"line one: ten, line two: twenty", "line one: 10, line 2: 20"},
 
 		// A number never crosses the end of a sentence.
 		{"The number is one hundred. Fifty five of them.", "The number is 100. 55 of them."},
 		{"one hundred! fifty five", "100! 55"},
 		{"one hundred\nfifty five", "100\n55"},
-		{"five point. one", "five point. 1"},
+		{"five point. one", "five point. one"},
 		{"twenty-one", "21"},
 
 		// Not numbers.
@@ -93,9 +92,16 @@ func TestReplace(t *testing.T) {
 		{"thousand of them", "thousand of them"},
 		{"and", "and"},
 		{"one hundred and", "one hundred and"},
-		{"and one", "and 1"},
+		{"and one", "and one"},
 
-		// One after a determiner is the pronoun, not a count.
+		// A "one" with no number word next to it stands on its own, so it is
+		// left as the word: it is the pronoun in "this one" and "one of them",
+		// and simply the word in "one apple" and "one more time". Nothing
+		// needs to know what came before it, which is what used to make this
+		// whack-a-mole.
+		{"one", "one"},
+		{"one apple", "one apple"},
+		{"I have one", "I have one"},
 		{"this one", "this one"},
 		{"I like this one", "I like this one"},
 		{"that one", "that one"},
@@ -108,22 +114,31 @@ func TestReplace(t *testing.T) {
 		{"another one", "another one"},
 		{"which one", "which one"},
 		{"This One.", "This One."},
-		// It is still a count on its own or inside a number.
-		{"only one", "only 1"},
-		{"just one", "just 1"},
-		{"the twenty one", "the 21"},
-
-		// One in front of "of" is the other shape of the pronoun.
+		{"only one", "only one"},
+		{"just one", "just one"},
 		{"one of them", "one of them"},
 		{"one of my friends", "one of my friends"},
 		{"I want one of those", "I want one of those"},
 		{"only one of my friends", "only one of my friends"},
 		{"One Of My Friends.", "One Of My Friends."},
-		// A count in front of "of" still counts, and the two after it does.
+		{"one more time", "one more time"},
+		{"one or two", "one or 2"},
+		{"one and a half", "one and a half"},
+		{"the twenty one", "the 21"},
 		{"two of my friends", "2 of my friends"},
 		{"twenty one of my friends", "21 of my friends"},
+
+		// With another number word next to it, it is a number.
+		{"one hundred", "100"},
+		{"one hundred twenty three", "123"},
+		{"one thousand one", "1,001"},
+		{"one million", "1,000,000"},
 		{"one hundred of them", "100 of them"},
 		{"one of the two", "one of the 2"},
+		{"one two", "1 2"},
+		{"one two three", "1 2 3"},
+		{"one twenty three", "1 23"},
+		{"one point five", "1.5"},
 	}
 
 	w := Words2Num{}
@@ -202,6 +217,7 @@ func TestReplaceNoAllocations(t *testing.T) {
 		"hundred of them, and you",
 		"this one and that one, no one, the one, any one",
 		"one of my friends, one of them, one of us",
+		"one apple. I have one. One more time please. The one and only.",
 		strings.Repeat("words that are nothing like digits at all, never here. ", 40),
 	}
 
